@@ -73,6 +73,9 @@ footer:
     - label: "LinkedIn"
       icon: "fab fa-fw fa-linkedin"
       url: "https://www.linkedin.com/in/krzysztof-badziak/"
+    - label: "Buy me a coffee"
+      icon: "fa fa-fw fa-coffee"
+      url: "https://buymeacoffee.com/kbaggio"
 
 defaults:
   # _posts
