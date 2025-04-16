@@ -29,7 +29,7 @@ General idea behind it was simple. Do whatever is needed to get a profiler that 
 Sounds ambitious, so let's break this idea into reality. What do we need to record that something happened at some time?
 
 1. We need to ask the CPU to tell us current time. We have stuff for that, RDTSC, RDTSCP, RDPMC.
-2. We need to synchronization between threads. So we will give each a separate buffer for events.
+2. We need **zero** synchronization between threads. So we will give each a separate buffer for events.
 3. If we have separate "anything" for each thread, we need TLS. I actually did custom one.
 4. Each time we gather an event, we cannot do any fancy checks other than necessary. So no "typical" thread_local/static/whatever singleton here folks.
 5. We need to postprocess the data. We will do it offline, after profiler is stopped.
