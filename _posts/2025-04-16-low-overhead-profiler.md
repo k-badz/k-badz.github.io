@@ -54,9 +54,9 @@ Common argument, but TSC unit has its own constant frequency that is set during 
 
 Because the structure of your workload might affect how often your process gets pre-empted. Because world does not stop when your process stops working. Because in the end, customer looks how much time he spent on a coffee before your workload finished. Because you might use shitty OS scheduler and maybe it is time to use different one (both OS and scheduler). There are many reasons, and due to above I (usually) consider alive-process-only-time-measurements not that helpful. It is also very enlightening to see how often your process is not being processed by any CPU, and you can see that if you use RDTSC. It is a real issue that might come up if your CPU has too much work on it during the workload and the most precious part of it might wait simply too much for its' time quant.
 
-**Wait, whoa, let's go back a bit, what does it mean that x64 is strongly-ordered? It means that store requests to your CPU are always done (or, to say it more properly - their results are globally visible) in sync with the original assembly listing**
+**Wait, whoa, let's go back a bit, what does it mean that x64 is strongly-ordered?**
 
-It means that, if you want some memory-storing parts of your code to happen in exactly the same order (as observed by e.g. other threads) - just make sure compiler does not shuffle those around. This is common mistake done by people who start using RDTSC to overlook it - they put two RDTSC close to each other and then compiler swaps them behind the scenes.... 
+It means that store requests to your CPU are always done (or, to say it more properly - their results are globally visible) in sync with the original assembly listing. In other words, it means that, if you want some memory-storing parts of your code to happen in exactly the same order (as observed by e.g. other threads) - just make sure compiler does not shuffle those around. This is common mistake done by people who start using RDTSC to overlook it - they put two RDTSC close to each other and then compiler swaps them behind the scenes.... 
 
 I'm using assembly directly in parts where it could theoretically matter, and compiler barriers between events, so I don't care.
 
