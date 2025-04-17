@@ -100,7 +100,9 @@ No, because 8 nanoseconds is time required to execute the single RDTSC itself (o
 Yes, because I provided special events, like the endbegin and immediate, that can create actually two events with single RDTSC used. So in specific cases you can, kinda, get lower. Also, in very specific workloads that
 are, as an example, very memory bound and that causes processor execution ports to drink drinks on the beach
 instead of doing real work, you could probably get visibly lower than that. But I wouldn't consider legit giving 
-any performance estimates basing on one optimistic workload.
+any performance estimates basing on one optimistic workload. If you would also boost the frequency of your CPU
+to values much higher than nominal, it could also take less observable time due to more cycles happening in
+those 8 nanos.
 
 ### Wait wait, before you go, how can I enable MASM in Visual Studio?
 1. Right-click the project
