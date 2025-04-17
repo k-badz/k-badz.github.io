@@ -30,7 +30,7 @@ General idea behind it was simple. Do whatever is needed to get a profiler that 
 Sounds ambitious, so let's break this idea into reality. What do we need to record that something happened at some time?
 
 1. We need to ask the CPU to tell us current time. We have stuff for that, RDTSC, RDTSCP, RDPMC.
-2. We need to synchronization between threads. So we will give each a separate buffer for events.
+2. We need **zero** synchronization between threads. So we will give each a separate buffer for events.
 3. If we have separate "anything" for each thread, we need TLS. I actually did custom one.
 4. Each time we gather an event, we cannot do any fancy checks other than necessary. So no "typical" thread_local/static/whatever singleton here folks.
 5. We need to postprocess the data. We will do it offline, after profiler is stopped.
@@ -55,9 +55,9 @@ Common argument, but TSC unit has its own constant frequency that is set during 
 
 Because the structure of your workload might affect how often your process gets pre-empted. Because world does not stop when your process stops working. Because in the end, customer looks how much time he spent on a coffee before your workload finished. Because you might use shitty OS scheduler and maybe it is time to use different one (both OS and scheduler). There are many reasons, and due to above I (usually) consider alive-process-only-time-measurements not that helpful. It is also very enlightening to see how often your process is not being processed by any CPU, and you can see that if you use RDTSC. It is a real issue that might come up if your CPU has too much work on it during the workload and the most precious part of it might wait simply too much for its' time quant.
 
-**Wait, whoa, let's go back a bit, what does it mean that x64 is strongly-ordered? It means that store requests to your CPU are always done (or, to say it more properly - their results are globally visible) in sync with the original assembly listing**
+**Wait, whoa, let's go back a bit, what does it mean that x64 is strongly-ordered?**
 
-It means that, if you want some memory-storing parts of your code to happen in exactly the same order (as observed by e.g. other threads) - just make sure compiler does not shuffle those around. This is common mistake done by people who start using RDTSC to overlook it - they put two RDTSC close to each other and then compiler swaps them behind the scenes.... 
+It means that store requests to your CPU are always done (or, to say it more properly - their results are globally visible) in sync with the original assembly listing. In other words, it means that, if you want some memory-storing parts of your code to happen in exactly the same order (as observed by e.g. other threads) - just make sure compiler does not shuffle those around. This is common mistake done by people who start using RDTSC to overlook it - they put two RDTSC close to each other and then compiler swaps them behind the scenes.... 
 
 I'm using assembly directly in parts where it could theoretically matter, and compiler barriers between events, so I don't care.
 
@@ -79,16 +79,16 @@ Singleton pattern is cool, but every time you call something like getInstance() 
 So let's get all the best stuff, with no cons at all. It is called inline global variable. It can be legally used in multiple translation units and symbol will be merged (although I didn't test the runtime merging :x), and has no runtime checks (as it is expected to be initialized at this point). Oh yeah, this and structured bindings are only two things that are necessary to make C++17 standard useful. I love it.
 
 ### Custom TLS? Really?
-Yeah, I know, usually you don't need to care as built in TLS implementation is no longer that shitty these days. But shared objects sometimes (due to not being main binary, but one that could be loaded into virtually anything) use very slow implementation of it (I actually traced it through assembly in GDB and I ended in some function called "slow" or "slowest" in TLS implementation, after many checks in the between, yuck).
+Yeah, I know, usually you don't need to care about it as built-in TLS implementation is no longer that shitty these days. But shared objects sometimes (due to not being main binary, but one that could be loaded into virtually anything) use very slow implementation of it (I actually traced it through assembly in GDB and I ended in some function called "slow" or "slowest" in TLS implementation, after many checks in the between, yuck).
 
-What my "custom TLS" is doing, it relies on the fact that both Windows and Ubuntu can get the thread id (or pointer to thread structure like pthread_self in case of Linux) very quickly (one assembly instruction to be exact), and they both use at most 16 bits of that value as I tested by creating thousands of threads. So what we will do? We will create static lookup table that can contain like 65k entries (pointers) and those 16bits will be an offset in that table. So each time we emit an event, we just check if TLS pointer in that static table is nonzero. This is fast enough, just single memory load that will be cached anyway. And 65k entries * 8 bytes of pointers is like 512KB of RAM needed - c'mon, these days just moving your mouse over empty desktop requires more than that. Sounds like a deal. 
+What my "custom TLS" is doing, it relies on the fact that both Windows and Ubuntu can get the thread id (or pointer to thread structure like pthread_self in case of Linux) very quickly (one assembly instruction to be exact), and they both use at most 16 bits of that value, as I tested by creating thousands of threads. So what we will do? We will create static lookup table that can contain like 65k entries (pointers) and those 16bits will be an offset in that table. So each time we emit an event and want to get our TLS, we just check if TLS pointer in that static table is nonzero. This is fast enough, just single memory load that will be cached anyway. The biggest overhead of TLS initialization will happen only on first event of that thread. And 65k entries * 8 bytes of pointers is like 512KB of RAM needed - c'mon, these days just moving your mouse over empty desktop requires more than that. Sounds like a deal. 
 
 As of portability - yes, this is not portable. While I'm using some segment registers offsets that for Windows seem to didn't change since beginning of time, it might not be the case for Linux distributions. If you encounter any issues related to it, check MacroTLSCheck definition in profiler_asm.asm (Windows) and profiler_asm.cpp (Linux). If you think you need more bits used in your case, you need to change CUSTOM_TLS_SIZE define value in profiler.cpp and tweak the aforementioned MacroTLSCheck definition.
 
 ### No security checks? Bruh...
 Yup, each thread will allocate RAM space for like 4 million events per thread. Feel free to lower it if you don't need that much and you are short on RAM - just change LOP_BUFFER_SIZE define value in profiler.cpp.
 
-I don't think you will ever need more than on the other hand at as it would result in traces so big that couldn't be loaded in chrome tracing nor perfetto.
+I don't think you will ever need more than that on the other hand as it would result in traces being so big that they couldn't be loaded in chrome tracing nor perfetto anyway.
 
 If you're up for a challenge, you might recreate my original version of the idea where I used ring buffers so overflow wouldn't ever happen, in worst case you would just lose some events. But you will pay additional two instructions penalty (ADD+AND) per each event if you do that. Original code was even better - it had additional thread that actually actively flushing all the thread rings to some single big buffer or even disk to not lose any event. It didn't even require any thread synchronization (due to proper usage of ring buffer and assumption on being strongly ordered architecture) so it also was very fast. But IMHO that system was too complicated and I just dumped it into a trash as I prefer simplicity `¯\_(ツ)_/¯`
 
