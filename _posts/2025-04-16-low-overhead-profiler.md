@@ -7,6 +7,7 @@ tags:
   - lop
   - profiling
   - optimization
+classes: wide
 ---
 
 Hello everyone. In this post we will go through the story and cool stuff about [LOP](https://github.com/k-badz/low-overhead-profiler) project repository.
