@@ -95,7 +95,7 @@ If you're up for a challenge, you might recreate my original version of the idea
 ### Can we get lower with the overhead? Where that 8 nanoseconds come from? 
 Yes, and no, frankly. 
 
-No, because 8 nanoseconds is time required to execute the single RDTSC itself (over 20 cycles, yup, it's heavy) and such good result happens when other instructions hides into your usual system latencies thanks to some partial out of order execution that is happening behind the scenes. This is why I say it has 8-12 nanoseconds overhead, because this is the range that might happen in real life. Proper way to measure it, is to run your full system with and without it, measure the total time difference and divide by the number of events you gathered.
+No, because 8 nanoseconds is time required to execute the single RDTSC itself (over 20 cycles, yup, it's heavy, and for some CPUs it can go over 40 cycles so that would naturally make this time longer) and such good result happens when other instructions hides into your usual system latencies thanks to some partial out of order execution that is happening behind the scenes. This is why I say it has 8-12 nanoseconds overhead, because this is the range that might happen in real life. Proper way to measure it, is to run your full system with and without it, measure the total time difference and divide by the number of events you gathered.
 
 Yes, because I provided special events, like the endbegin and immediate, that can create actually two events with single RDTSC used. So in specific cases you can, kinda, get lower. Also, in very specific workloads that
 are, as an example, very memory bound and that causes processor execution ports to drink drinks on the beach
