@@ -92,17 +92,19 @@ I don't think you will ever need more than that on the other hand as it would re
 
 If you're up for a challenge, you might recreate my original version of the idea where I used ring buffers so overflow wouldn't ever happen, in worst case you would just lose some events. But you will pay additional two instructions penalty (ADD+AND) per each event if you do that. Original code was even better - it had additional thread that actually actively flushing all the thread rings to some single big buffer or even disk to not lose any event. It didn't even require any thread synchronization (due to proper usage of ring buffer and assumption on being strongly ordered architecture) so it also was very fast. But IMHO that system was too complicated and I just dumped it into a trash as I prefer simplicity `¯\_(ツ)_/¯`
 
+**UPDATE**:  
+As of v0.2 of the LOP, there is now "safer" mode available that can detect buffer overflow and automatically flush current buffers to file. This mode will temporarily disable the profile for the "recovery" process being done so some events will be lost. 
+
+On top of that there is also "safer lossless" mode which won't lose any event due to hot swap mechanism I implemented, but it have one important side-effect which is - increased overhead per event. My tests shows that in this mode, overhead is of around 16ns per event. Why it happens? Because I'm swapping the buffers on a profiler that actively gets new events, I had to use interlocked instructions in the assembly part that gets a buffer and then increases the pointer for next event. Without it, I would frequently (on stress tests at least) get RMW issues.
+
+These "safer" modes are experimental, but feel free to test them (so they can become non-experimental one day, right?).
+
 ### Can we get lower with the overhead? Where that 8 nanoseconds come from? 
 Yes, and no, frankly. 
 
 No, because 8 nanoseconds is time required to execute the single RDTSC itself (over 20 cycles, yup, it's heavy, and for some CPUs it can go over 40 cycles so that would naturally make this time longer) and such good result happens when other instructions hides into your usual system latencies thanks to some partial out of order execution that is happening behind the scenes. This is why I say it has 8-12 nanoseconds overhead, because this is the range that might happen in real life. Proper way to measure it, is to run your full system with and without it, measure the total time difference and divide by the number of events you gathered.
 
-Yes, because I provided special events, like the endbegin and immediate, that can create actually two events with single RDTSC used. So in specific cases you can, kinda, get lower. Also, in very specific workloads that
-are, as an example, very memory bound and that causes processor execution ports to drink drinks on the beach
-instead of doing real work, you could probably get visibly lower than that. But I wouldn't consider legit giving 
-any performance estimates basing on one optimistic workload. If you would also boost the frequency of your CPU
-to values much higher than nominal, it could also take less observable time due to more cycles happening in
-those 8 nanos.
+Yes, because I provided special events, like the endbegin and immediate, that can create actually two events with single RDTSC used. So in specific cases you can, kinda, get lower. Also, in very specific workloads that are, as an example, very memory bound and that causes processor execution ports to drink drinks on the beach instead of doing real work, you could probably get visibly lower than that. But I wouldn't consider legit giving any performance estimates basing on one optimistic workload. If you would also boost the frequency of your CPU to values much higher than nominal, it could also take less observable time due to more cycles happening in those 8 nanos.
 
 ### Wait wait, before you go, how can I enable MASM in Visual Studio?
 1. Right-click the project
